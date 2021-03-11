@@ -1,8 +1,6 @@
 from pyspark.sql import *
-from pyspark.sql.types import StructType, StructField
-from pyspark.sql.types import DateType, DoubleType, IntegerType, StringType
-from pyspark.sql.functions import to_timestamp, regexp_replace, col, udf
-from datetime import datetime
+from pyspark.sql.functions import *
+from pyspark.sql.types import *
 
 spark = SparkSession.builder.getOrCreate()
 
@@ -34,31 +32,37 @@ df = spark.read.format("csv") \
     .option("header", True) \
     .schema(schema) \
     .load("SEMANAL_MUNICIPIOS-2019.csv")
-
-# This function converts the string cell into a date:
-func =  udf (lambda x: datetime.strptime(x, '%m/%d/%Y'), DateType())
-df = df.withColumn('data_final', func(col('DATA  FINAL')))
-
 # df = spark.read.csv("SEMANAL_MUNICIPIOS-2019.csv", inferSchema = True, header = True)
 
-df = df.withColumn("DATA FINAL", to_timestamp("DATA FINAL", "d/m/yyyy").cast(DateType))
-# .withColumn("DATA INICIAL", to_timestamp("DATA INICIAL", "d/m/yyyy").cast('timestamp'))\
-# .withColumn("DATA FINAL", to_timestamp("DATA FINAL", "d/m/yyyy").cast(DataType)) \
-# .withColumn("PREÇO MÉDIO REVENDA", regexp_replace("PREÇO MÉDIO REVENDA", ",", "."))\
-# .withColumn("DESVIO PADRÃO REVENDA", regexp_replace("DESVIO PADRÃO REVENDA", ",", "."))\
-# .withColumn("MARGEM MÉDIA REVENDA", regexp_replace("MARGEM MÉDIA REVENDA", ",", "."))\
 
-# df.select(to_timestamp(df["DATA FINAL"], 'd/m/yyyy').alias('data_final'))\
 
+#Converte o tipo de dados das colunas de string para Data, Inteiro e Double
+df = df.withColumn('DATA INICIAL',to_date(df["DATA INICIAL"], 'd/M/yyyy').cast(DateType()))\
+       .withColumn("PREÇO MÉDIO REVENDA", regexp_replace("PREÇO MÉDIO REVENDA", ",", ".").cast(DoubleType()))\
+       # .withColumn("MES FINAL", month(col("DATA FINAL")))\
+       # .withColumn("ANO FINAL", year(col("DATA FINAL")))
+       # .withColumn("data_final", to_timestamp("DATA FINAL", "d/m/yyyy"))\
+       # .withColumn("DATA FINAL", to_timestamp("DATA FINAL", "d/m/yyyy").cast(DataType())) \
+       # .withColumn("DESVIO PADRÃO REVENDA", regexp_replace("DESVIO PADRÃO REVENDA", ",", "."))\
+       # .withColumn("MARGEM MÉDIA REVENDA", regexp_replace("MARGEM MÉDIA REVENDA", ",", "."))\
 df.printSchema()
-df.show()
+df.show(10000)
+
 # #transforma DataFrame em Tabela para execuçao de select no padrao SQL
-# df.createOrReplaceTempView("table")
-# df1 = spark.sql("""SELECT `DATA INICIAL` as data_inicial FROM table""")
-# df1.show()
-# df1.printSchema()
+df.createOrReplaceTempView("table")
+df1 = spark.sql("""SELECT month(`DATA INICIAL`) as mi, year(`DATA INICIAL`) as ai, `MUNICÍPIO` as m, PRODUTO as p,
+                          round(avg(`PREÇO MÉDIO REVENDA`), 2) as pm
+                   FROM table
+                   GROUP BY ai, mi, m, p
+                   ORDER BY m, ai, mi
+                """)
+
+df1.show(2000)
+df1.printSchema()
+
+#Filtra informaçoes no DataFrame
 # df.filter(df.MUNICÍPIO=='ABAETETUBA').show(50)
 
+#Agrupar informaçoes no DataFrame
 # df_grouped = df.groupBy("DATA_INICIAL").groupBy("MUNICÍPIO").count().show()
 
-# sqlContext.sql('select * from df_table').show()
