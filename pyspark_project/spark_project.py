@@ -48,7 +48,7 @@ df = df.withColumn('DATA INICIAL',to_date(df["DATA INICIAL"], 'd/M/yyyy').cast(D
        # .withColumn("DESVIO PADRÃO REVENDA", regexp_replace("DESVIO PADRÃO REVENDA", ",", "."))\
        # .withColumn("MARGEM MÉDIA REVENDA", regexp_replace("MARGEM MÉDIA REVENDA", ",", "."))\
 # df.printSchema()
-# df.show(100)
+df.show(100)
 
 # #transforma DataFrame em Tabela para execuçao de select no padrao SQL
 df.createOrReplaceTempView("table")
@@ -83,17 +83,18 @@ df5 = spark.sql("""SELECT month(`DATA INICIAL`) as mi, year(`DATA INICIAL`) as a
                           max(`PREÇO MÉDIO REVENDA`) as pmax, min(`PREÇO MÉDIO REVENDA`) as pmin
                    FROM table
                    GROUP BY ai, mi, m, p
-                   ORDER BY m, ai, mi
+                   ORDER BY m, p, ai, mi
                 """)
+df5.show()
 
-# window para calculo de variacao mensal
-window = Window.partitionBy(["p", "m"]).orderBy('p')
+# window e lag para calculo de variacao mensal
+window = Window.partitionBy(["p", "m"]).orderBy("m")
 df5 = df5.withColumn("pmax_lag", lag(col("pmax"), 1).over(window))\
          .withColumn("pmin_lag", lag(col("pmin"), 1).over(window))\
 
-df5.withColumn("varAbsolutMax", (df5["pmax_lag"] - df5["pmax"]))\
-   .withColumn("varAbsolutMix", (df5["pmin_lag"] - df5["pmin"]))\
-   .show()
+df5.withColumn("varAbsolutMax", (df5["pmax"] - df5["pmax_lag"]))\
+   .withColumn("varAbsolutMix", (df5["pmin"] - df5["pmin_lag"]))\
+   .show(1000)
 
 
 
