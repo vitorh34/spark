@@ -43,7 +43,7 @@ df = df.withColumn('DATA INICIAL',to_date(df["DATA INICIAL"], 'd/M/yyyy').cast(D
        .withColumn("PREÇO MÁXIMO REVENDA", regexp_replace("PREÇO MÁXIMO REVENDA", ",", ".").cast(DoubleType()))\
 
 # df.printSchema()
-df.show(100)
+# df.show(100)
 
 # #transforma DataFrame em Tabela para execuçao de select no padrao SQL
 df.createOrReplaceTempView("table")
@@ -56,8 +56,8 @@ df1 = spark.sql("""SELECT month(`DATA INICIAL`) as mi, year(`DATA INICIAL`) as a
                    FROM table
                    GROUP BY ai, mi, m, p
                    ORDER BY m, ai, mi
-                """).show(2000)
-# df1.printSchema()
+                """).show(200)
+# # df1.printSchema()
 
 print("-----------------questao (b)----------------")
 # b) Calcule a média de valor do combustível por estado e região.
@@ -66,7 +66,7 @@ df2 = spark.sql("""SELECT ESTADO as e, PRODUTO as p, round(avg(`PREÇO MÉDIO RE
                    FROM table
                    GROUP BY e, p
                    ORDER BY e, p
-                """).show(100)
+                """).show(200)
 
 #Por REGIÃO
 df3 = spark.sql("""SELECT `REGIÃO` as r, PRODUTO as p, round(avg(`PREÇO MÉDIO REVENDA`), 2) as pm
@@ -77,7 +77,8 @@ df3 = spark.sql("""SELECT `REGIÃO` as r, PRODUTO as p, round(avg(`PREÇO MÉDIO
 
 print("-----------------questao (c)----------------")
 # c) Calcule a variância e a variação absoluta do máximo, mínimo de cada cidade, mês a mês.
-df5 = spark.sql("""SELECT month(`DATA INICIAL`) as mi, year(`DATA INICIAL`) as ai, `MUNICÍPIO` as m, PRODUTO as p,
+df5 = spark.sql("""
+                   SELECT month(`DATA INICIAL`) as mi, year(`DATA INICIAL`) as ai, `MUNICÍPIO` as m, PRODUTO as p,
                           max(`PREÇO MÉDIO REVENDA`) as pmax, min(`PREÇO MÉDIO REVENDA`) as pmin
                    FROM table
                    GROUP BY ai, mi, m, p
@@ -92,7 +93,15 @@ df5 = df5.withColumn("pmax_lag", lag(col("pmax"), 1).over(window))\
 
 df5.withColumn("varAbsolutMax", (df5["pmax"] - df5["pmax_lag"]))\
    .withColumn("varAbsolutMix", (df5["pmin"] - df5["pmin_lag"]))\
-   .show(1000)
+   .show(200)
+
+#varianca do preco do combustivel mes a mes por município
+df6 = spark.sql("""SELECT month(`DATA INICIAL`) as mi, year(`DATA INICIAL`) as ai, `MUNICÍPIO` as m, PRODUTO as p,
+                          round(avg(`PREÇO MÉDIO REVENDA`), 2) as pm, round(variance(`PREÇO MÉDIO REVENDA`), 6) as v
+                   FROM table
+                   GROUP BY ai, mi, m, p
+                   ORDER BY m, ai, mi
+                """).show(200)
 
 print("-----------------questao (d)----------------")
 #d) Quais são as 5 cidades que possuem a maior diferença entre o combustível mais barato e o mais caro.
